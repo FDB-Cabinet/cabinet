@@ -1,0 +1,8 @@
+[package]
+name = "cabinet-simulation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+foundationdb-simulation = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git", rev = "7ea683975f0069776c74342f326ecfa001cc1a73", features = ["fdb-7_4"] }
+
