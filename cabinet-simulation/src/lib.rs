@@ -1,14 +1,24 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use crate::stats_workload::StatsWorkload;
+use foundationdb_simulation::{
+    register_factory, RustWorkloadFactory, WorkloadContext, WrappedWorkload,
+};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod stats_workload;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+struct CabinetSimulationFactory;
+
+impl RustWorkloadFactory for CabinetSimulationFactory {
+    fn create(name: String, context: WorkloadContext) -> WrappedWorkload {
+        let iteration = context
+            .get_option("iterations")
+            .expect("Iteration option not found");
+        match name.as_str() {
+            stats_workload::STATS_WORKLOAD_NAME => {
+                WrappedWorkload::new(StatsWorkload::new(context, iteration))
+            }
+            _ => panic!("Unknown workload: {}", name),
+        }
     }
 }
+
+register_factory!(CabinetSimulationFactory);

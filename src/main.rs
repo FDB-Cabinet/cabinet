@@ -1,31 +1,8 @@
-use crate::cabinet::Cabinet;
-use crate::errors::CabinetError;
-use crate::item::Item;
-use foundationdb::options::TransactionOption;
-use foundationdb::{Database, FdbBindingError, RetryableTransaction};
-
-pub mod cabinet;
-pub mod errors;
-mod item;
-mod prefix;
-mod stats;
-
-pub async fn with_transaction<F, Fut, T>(database: &Database, f: F) -> Result<T, FdbBindingError>
-where
-    F: Fn(RetryableTransaction) -> Fut + Clone,
-    Fut: Future<Output = Result<T, FdbBindingError>>,
-{
-    database
-        .run(|trx, _| {
-            let f = f.clone();
-
-            async move {
-                trx.set_option(TransactionOption::AutomaticIdempotency)?;
-                f(trx).await
-            }
-        })
-        .await
-}
+use cabinet::cabinet::Cabinet;
+use cabinet::errors::CabinetError;
+use cabinet::item::Item;
+use ::cabinet::with_transaction;
+use foundationdb::{Database, FdbBindingError};
 
 async fn cleanup(database: &Database) -> Result<(), FdbBindingError> {
     with_transaction(database, |trx| async move {

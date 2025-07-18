@@ -1,10 +1,10 @@
 use bincode::{decode_from_slice, encode_to_vec};
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 
 #[derive(bincode::Encode, bincode::Decode)]
 pub struct Item {
     key: Vec<u8>,
-    value: Vec<u8>,
+    pub value: Vec<u8>,
 }
 
 impl Debug for Item {

@@ -3,6 +3,13 @@ name = "cabinet-simulation"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "cabinet"
+crate-type = ["cdylib"]
+
 [dependencies]
-foundationdb-simulation = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git", rev = "7ea683975f0069776c74342f326ecfa001cc1a73", features = ["fdb-7_4"] }
+foundationdb-simulation = { workspace = true }
+foundationdb = { workspace = true }
+thiserror = { workspace = true }
+cabinet = { path = ".." }
 
