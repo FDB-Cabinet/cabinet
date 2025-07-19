@@ -1,20 +1,19 @@
-use crate::errors::CabinetError;
 use crate::item::Item;
 use crate::prefix::Prefix;
 use crate::stats::{StatEvent, StatsHolder};
 use foundationdb::tuple::Subspace;
 use foundationdb::RetryableTransaction;
 
-pub struct Cabinet<'a> {
-    transaction: &'a RetryableTransaction,
+pub struct Cabinet {
+    transaction: RetryableTransaction,
     root_subspace: Subspace,
-    stats: StatsHolder<'a>,
+    stats: StatsHolder,
 }
 
-impl<'a> Cabinet<'a> {
-    pub fn new(transaction: &'a RetryableTransaction) -> Self {
-        let root_subspace = Subspace::all();
-        let stats = StatsHolder::new(root_subspace.clone(), transaction);
+impl Cabinet {
+    pub fn new(transaction: RetryableTransaction, tenant: &str) -> Self {
+        let root_subspace = Subspace::all().subspace(&tenant);
+        let stats = StatsHolder::new(root_subspace.clone(), transaction.clone());
         Self {
             transaction,
             root_subspace,
@@ -23,7 +22,7 @@ impl<'a> Cabinet<'a> {
     }
 }
 
-impl Cabinet<'_> {
+impl Cabinet {
     pub async fn put(&self, item: &Item) -> crate::errors::Result<()> {
         let key = item.get_key();
         let data = item.as_bytes();
@@ -43,19 +42,17 @@ impl Cabinet<'_> {
         Ok(Some(item))
     }
 
-    pub async fn delete(&self, key: &[u8]) -> crate::errors::Result<()> {
+    pub async fn delete(&self, key: &[u8]) -> crate::errors::Result<Option<Item>> {
         let item_key = self.root_subspace.subspace(&Prefix::Data).pack(&key);
 
         let Some(item) = self.get(&key).await? else {
-            return Err(CabinetError::ItemNotFound(
-                String::from_utf8_lossy(&key).to_string(),
-            ));
+            return Ok(None);
         };
 
         self.transaction.clear(&item_key);
         self.stats.update(StatEvent::Delete(&item)).await?;
 
-        Ok(())
+        Ok(Some(item))
     }
 
     pub async fn clear(&self) -> crate::errors::Result<()> {
@@ -67,7 +64,7 @@ impl Cabinet<'_> {
         Ok(())
     }
 
-    pub fn get_stats(&self) -> &StatsHolder<'_> {
+    pub fn get_stats(&self) -> &StatsHolder {
         &self.stats
     }
 }

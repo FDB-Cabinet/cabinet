@@ -10,6 +10,12 @@ pub enum StatsError {
     ItemNotFound,
     #[error("Item value incorrect :  expected {:?}, actual {:?}", String::from_utf8_lossy(&expected) ,String::from_utf8_lossy(&actual))]
     ItemValueIncorrect { expected: Vec<u8>, actual: Vec<u8> },
+    #[error("Invalid database stats size: expected {expected} bytes, actual {actual} bytes")]
+    InvalidDatabaseStatsSize { expected: i64, actual: i64 },
+    #[error("Invalid database stats count: expected {expected}, actual {actual}")]
+    InvalidDatabaseStatsCount { expected: i64, actual: i64 },
+    #[error(transparent)]
+    Cabinet(#[from] cabinet::errors::CabinetError),
 }
 
 impl From<StatsError> for FdbBindingError {

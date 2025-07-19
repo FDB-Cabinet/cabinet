@@ -11,13 +11,13 @@ pub enum StatEvent<'a> {
     DeleteAll,
 }
 
-pub struct StatsHolder<'a> {
+pub struct StatsHolder {
     subspace: Subspace,
-    transaction: &'a RetryableTransaction,
+    transaction: RetryableTransaction,
 }
 
-impl<'a> StatsHolder<'a> {
-    pub fn new(subspace: Subspace, transaction: &'a RetryableTransaction) -> Self {
+impl StatsHolder {
+    pub fn new(subspace: Subspace, transaction: RetryableTransaction) -> Self {
         Self {
             subspace: subspace.subspace(&Prefix::Stats),
             transaction,
@@ -32,21 +32,24 @@ trait Stat {
     async fn update_delete_all(&self) -> crate::errors::Result<()>;
 }
 
-impl StatsHolder<'_> {
+impl StatsHolder {
     pub async fn get_count(&self) -> crate::errors::Result<i64> {
-        let headcount_stats = HeadcountStats::new(self.subspace.clone(), self.transaction);
+        let headcount_stats = HeadcountStats::new(self.subspace.clone(), &self.transaction);
         headcount_stats.get_count().await
     }
 
     pub async fn get_size(&self) -> crate::errors::Result<i64> {
-        let headcount_stats = SizeStats::new(self.subspace.clone(), self.transaction);
+        let headcount_stats = SizeStats::new(self.subspace.clone(), &self.transaction);
         headcount_stats.get_size().await
     }
 
     pub async fn update(&self, stat_event: StatEvent<'_>) -> crate::errors::Result<()> {
         let stat_holders: Vec<Box<dyn Stat>> = vec![
-            Box::new(SizeStats::new(self.subspace.clone(), self.transaction)),
-            Box::new(HeadcountStats::new(self.subspace.clone(), self.transaction)),
+            Box::new(SizeStats::new(self.subspace.clone(), &self.transaction)),
+            Box::new(HeadcountStats::new(
+                self.subspace.clone(),
+                &self.transaction,
+            )),
         ];
 
         match stat_event {

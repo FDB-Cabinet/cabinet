@@ -1,6 +1,6 @@
-use cabinet::cabinet::Cabinet;
 use cabinet::errors::CabinetError;
 use cabinet::item::Item;
+use cabinet::with_cabinet;
 use ::cabinet::with_transaction;
 use foundationdb::{Database, FdbBindingError};
 
@@ -19,9 +19,9 @@ async fn main() -> Result<(), CabinetError> {
     let database = Database::new(None).expect("Failed to create database");
     cleanup(&database).await?;
 
-    with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
+    let tenant = "tenant";
 
+    with_cabinet(&database, tenant, |cabinet| async move {
         let item = Item::new(b"key", b"value");
 
         cabinet.put(&item).await?;
@@ -34,9 +34,7 @@ async fn main() -> Result<(), CabinetError> {
     })
     .await?;
 
-    let count = with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
-
+    let count = with_cabinet(&database, tenant, |cabinet| async move {
         let count = cabinet.get_stats().get_count().await?;
 
         Ok(count)
@@ -45,18 +43,14 @@ async fn main() -> Result<(), CabinetError> {
 
     println!("{count}");
 
-    let item = with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
-
+    let item = with_cabinet(&database, tenant, |cabinet| async move {
         let item = cabinet.get(b"key").await?;
 
         Ok(item)
     })
     .await?;
 
-    with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
-
+    with_cabinet(&database, tenant, |cabinet| async move {
         for i in 0..1000 {
             let item = Item::new(
                 format!("key{}", i).as_bytes(),
@@ -71,9 +65,7 @@ async fn main() -> Result<(), CabinetError> {
 
     println!("{item:?}");
 
-    let count = with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
-
+    let count = with_cabinet(&database, tenant, |cabinet| async move {
         cabinet.delete(b"key").await?;
 
         let count = cabinet.get_stats().get_count().await?;
@@ -84,9 +76,7 @@ async fn main() -> Result<(), CabinetError> {
 
     println!("count: {count}");
 
-    let count = with_transaction(&database, |trx| async move {
-        let cabinet = Cabinet::new(&trx);
-
+    let count = with_cabinet(&database, tenant, |cabinet| async move {
         let size = cabinet.get_stats().get_size().await?;
         println!("size: {size}");
 
