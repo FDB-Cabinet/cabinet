@@ -1,0 +1,14 @@
+[package]
+name = "seed-seeker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.41", features = ["derive"] }
+colored_json = "5.0.0"
+jq-rs = "0.4.1"
+jsonxf = "1.1.1"
+rand = { workspace = true }
+subprocess = "0.2.9"
+tempfile = "3.20.0"
+walkdir = "2.5.0"

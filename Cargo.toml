@@ -5,12 +5,13 @@ edition = "2024"
 
 [workspace]
 members = [
-    "cabinet-simulation",
+    "cabinet-simulation", "seed-seeker",
 ]
 
 [workspace.dependencies]
 foundationdb = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git", rev = "7ea683975f0069776c74342f326ecfa001cc1a73", features = ["fdb-7_4"] }
 foundationdb-simulation = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git", rev = "7ea683975f0069776c74342f326ecfa001cc1a73", features = ["fdb-7_4"] }
+rand = { version = "0.9.1" }
 thiserror = "2.0.12"
 
 

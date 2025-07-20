@@ -85,7 +85,7 @@ impl WorkloadLogic for StatsWorkload {
             let actual_count = stats.get_count().await?;
             let actual_size = stats.get_size().await?;
 
-            if stats.get_size().await? != expected_size {
+            if actual_size != expected_size {
                 return Err(StatsError::InvalidDatabaseStatsSize {
                     actual: actual_size,
                     expected: expected_size,
@@ -93,7 +93,7 @@ impl WorkloadLogic for StatsWorkload {
                 .into());
             }
 
-            if stats.get_count().await? != expected_count {
+            if actual_count != expected_count {
                 return Err(StatsError::InvalidDatabaseStatsCount {
                     actual: actual_count,
                     expected: expected_count,
