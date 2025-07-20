@@ -1,9 +1,12 @@
 use crate::stats_workload::StatsWorkload;
+use crate::workload::Workload;
 use foundationdb_simulation::{
     register_factory, RustWorkloadFactory, WorkloadContext, WrappedWorkload,
 };
 
 mod stats_workload;
+
+mod workload;
 
 struct CabinetSimulationFactory;
 
@@ -14,7 +17,8 @@ impl RustWorkloadFactory for CabinetSimulationFactory {
             .expect("Iteration option not found");
         match name.as_str() {
             stats_workload::STATS_WORKLOAD_NAME => {
-                WrappedWorkload::new(StatsWorkload::new(context, iteration))
+                let stat_workload = StatsWorkload::new(&context);
+                WrappedWorkload::new(Workload::new(context, iteration, stat_workload))
             }
             _ => panic!("Unknown workload: {}", name),
         }
