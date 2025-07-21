@@ -2,3 +2,4 @@
 .idea
 simfdb
 *.json
+.env

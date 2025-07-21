@@ -1,5 +1,6 @@
 use seed_seeker::run;
 
-fn main() {
-    run().expect("Failed to run");
+#[tokio::main]
+async fn main() {
+    run().await.expect("Failed to run");
 }

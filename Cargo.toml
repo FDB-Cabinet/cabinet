@@ -13,11 +13,12 @@ foundationdb = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git",
 foundationdb-simulation = { git = "https://github.com/foundationdb-rs/foundationdb-rs.git", rev = "7ea683975f0069776c74342f326ecfa001cc1a73", features = ["fdb-7_4"] }
 rand = { version = "0.9.1" }
 thiserror = "2.0.12"
+tokio = { version = "1.46.1", features = ["macros", "rt-multi-thread", "time"] }
 
 
 [dependencies]
 bincode = "2.0.1"
 foundationdb = { workspace = true }
 thiserror = { workspace = true }
-tokio = { version = "1.46.1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { workspace = true }
 async-trait = "0.1.88"
