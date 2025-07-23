@@ -82,7 +82,7 @@ impl WorkloadLogic for StatsWorkload {
         with_cabinet(&db, &tenant, |cabinet| async move {
             let stats = cabinet.get_stats();
 
-            let actual_count = stats.get_count().await?;
+            let actual_count = stats.get_count().await? + 1;
             let actual_size = stats.get_size().await?;
 
             if actual_size != expected_size {

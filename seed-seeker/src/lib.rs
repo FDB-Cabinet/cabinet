@@ -1,3 +1,4 @@
+use crate::gitlab::PayloadBuilder;
 use clap::Parser;
 use colored_json::ToColoredJson;
 use rand::{rng, RngCore};
@@ -32,6 +33,9 @@ struct Cli {
     /// Gitlab project id where to create the issue
     #[clap(long, env = "GITLAB_PROJECT_ID")]
     gitlab_project_id: u64,
+    /// Git commit ID
+    #[clap(long)]
+    commit_id: Option<String>,
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -84,7 +88,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         config,
     )?;
 
-    let (out, err) = process.communicate(None)?;
+    let (stdout, stderr) = process.communicate(None)?;
 
     let Some(exit_status) = process.poll() else {
         process.terminate()?;
@@ -95,9 +99,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("seed: {seed}");
 
-    //println!("{out:?}");
-
     let mut compiled = jq_rs::compile(r#"select(.Layer=="Rust") | select(.Severity=="40")"#)?;
+
+    let mut filtered_output = "".to_string();
 
     for file in walkdir::WalkDir::new(logs_dir.clone()) {
         let file = file?;
@@ -110,20 +114,24 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 if logs.is_empty() {
                     continue;
                 }
-                let pretty = jsonxf::pretty_print(&logs)?.to_colored_json_auto()?;
-                println!("{pretty}");
+                let pretty = jsonxf::pretty_print(&logs)?;
+                // println!("{}", pretty.to_colored_json_auto()?);
+                filtered_output.push_str(&pretty);
+                filtered_output.push('\n');
             }
         }
     }
 
-    let Some(out) = out else {
-        return Err("Failed to get stdout".into());
-    };
+    let payload = PayloadBuilder::default()
+        .logs(logs_dir)
+        .filtered_output(filtered_output)
+        .stdout(stdout)
+        .stderr(stderr)
+        .seed(seed)
+        .commit_id(cli.commit_id)
+        .build()?;
 
-    let log_file = logs_dir.join("fdbserver.log");
-    std::fs::write(&log_file, out)?;
-
-    api.create_issue(&log_file).await?;
+    api.create_issue(payload).await?;
 
     Ok(())
 }

@@ -1,7 +1,11 @@
 use derive_builder::Builder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fs::File;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 #[derive(Debug, Builder)]
 #[builder(setter(into))]
@@ -11,44 +15,141 @@ pub struct Gitlab {
     project_id: u64,
 }
 
+#[derive(Debug, Builder)]
+#[builder(setter(into))]
+pub struct Payload {
+    /// Json files filtered by Layer and Severity
+    filtered_output: String,
+    /// raw stdout output
+    stdout: Option<String>,
+    /// raw stderr output
+    stderr: Option<String>,
+    /// seed used for the test
+    seed: u32,
+    /// commit id of the tested workload if any
+    commit_id: Option<String>,
+    /// path to the logs folder
+    logs: PathBuf,
+}
+
 impl Gitlab {
-    pub async fn create_issue(&self, logs: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn upload_file(
+        &self,
+        path_buf: PathBuf,
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let client = reqwest::Client::new();
-
-        let form = reqwest::multipart::Form::new();
-        let form = form.file("file", logs).await?;
-
-        let a = client
+        let request = client
             .post(format!(
                 "https://{}/api/v4/projects/{}/uploads",
                 self.endpoint, self.project_id
             ))
-            .multipart(form)
+            .multipart(
+                reqwest::multipart::Form::new()
+                    .file("file", path_buf)
+                    .await?,
+            )
             .header("PRIVATE-TOKEN", &self.token)
             .build()?;
 
-        let response = client.execute(a).await?;
-        let b = response.text().await?;
-        let c = serde_json::from_str::<UploadResponse>(&b)?;
+        let response = client.execute(request).await?;
+        let text_response = response.text().await?;
+        let url = serde_json::from_str::<UploadResponse>(&text_response)?.url;
+        Ok(url)
+    }
+
+    pub async fn upload_from_string(
+        &self,
+        name: &str,
+        string: &String,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let tempdir = tempfile::tempdir()?;
+        let path = tempdir.path().join(name);
+        std::fs::write(&path, string)?;
+        self.upload_file(path).await
+    }
+
+    pub async fn upload_file_from_path(
+        &self,
+        name: &str,
+        path: &PathBuf,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let tar_path = PathBuf::from(name);
+        let tar = File::create(&tar_path).unwrap();
+        let enc = GzEncoder::new(tar, Compression::default());
+        let mut a = tar::Builder::new(enc);
+        dbg!(&path);
+        a.append_dir_all("", path).unwrap();
+        let mut a = a.into_inner().unwrap();
+        a.try_finish().unwrap();
+
+        self.upload_file(tar_path).await
+    }
+
+    pub async fn create_issue(&self, payload: Payload) -> Result<(), Box<dyn std::error::Error>> {
+        let client = reqwest::Client::new();
+        let seed = payload.seed;
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let upload_url_stdout = self
+            .upload_from_string(
+                &format!("simulation_stdout_seed_{seed}_{now}.txt"),
+                &payload.stdout.unwrap_or_default(),
+            )
+            .await?;
+        let upload_url_stderr = self
+            .upload_from_string(
+                &format!("simulation_stderr_seed_{seed}_{now}.txt"),
+                &payload.stderr.unwrap_or_default(),
+            )
+            .await?;
+        let upload_url_logs = self
+            .upload_file_from_path(
+                &format!("simulation_logs_seed_{seed}_{now}.tar.gz"),
+                &payload.logs,
+            )
+            .await?;
+
+        let commit_id = payload.commit_id.unwrap_or("Non specified".to_string());
+        let filtered_output = payload.filtered_output;
 
         let params = HashMap::from([
-            ("title", "Test Issue".to_string()),
+            (
+                "title",
+                format!("Investigate Faulty Seed #{}", payload.seed),
+            ),
             (
                 "description",
-                format!(r#"This is the [output]({}) of the test run."#, c.url),
+                format!(
+                    r#"- Commit ID: {commit_id}
+- Output: [simulation.out]({upload_url_stdout})
+- Stderr : [simulation.err]({upload_url_stderr})
+- Full logs: [logs.tar.gz]({upload_url_logs})
+- Layer errors:
+```json
+{filtered_output}
+```
+"#,
+                ),
             ),
         ]);
 
-        let a = client
+        let params = serde_json::to_string(&params)?;
+
+        let request = client
             .post(format!(
                 "https://{}/api/v4/projects/{}/issues",
                 self.endpoint, self.project_id
             ))
-            .query(&params)
+            .body(params)
             .header("PRIVATE-TOKEN", &self.token)
+            .header("Content-Type", "application/json")
             .build()?;
 
-        client.execute(a).await?;
+        let resposne = client.execute(request).await?;
+        dbg!(resposne);
 
         Ok(())
     }
