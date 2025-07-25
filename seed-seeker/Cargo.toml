@@ -13,10 +13,12 @@ tar = "0.4.44"
 jq-rs = "0.4.1"
 jsonxf = "1.1.1"
 rand = { workspace = true }
-reqwest = { version = "0.12.22", features = ["multipart", "stream"] }
+reqwest = { version = "0.12.22", features = ["multipart", "stream", "blocking"] }
 subprocess = "0.2.9"
 tempfile = "3.20.0"
-tokio = { workspace = true }
 walkdir = "2.5.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.141"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
+rayon = "1.10.0"

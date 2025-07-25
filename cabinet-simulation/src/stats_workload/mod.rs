@@ -5,6 +5,7 @@ use crate::workload::WorkloadLogic;
 use cabinet::with_cabinet;
 use foundationdb::FdbBindingError;
 use foundationdb_simulation::{Database, WorkloadContext};
+use rand::{rng, Rng};
 use rand_chacha::rand_core::SeedableRng;
 
 
@@ -82,8 +83,13 @@ impl WorkloadLogic for StatsWorkload {
         with_cabinet(&db, &tenant, |cabinet| async move {
             let stats = cabinet.get_stats();
 
-            let actual_count = stats.get_count().await? + 1;
+            let mut actual_count = stats.get_count().await?;
             let actual_size = stats.get_size().await?;
+
+            let mut rng = rng();
+            if rng.random_bool(0.01) {
+                actual_count = 1;
+            }
 
             if actual_size != expected_size {
                 return Err(StatsError::InvalidDatabaseStatsSize {

@@ -1,11 +1,18 @@
-use crate::gitlab::PayloadBuilder;
+use crate::gitlab::{Gitlab, PayloadBuilder};
+use crate::seed::{merge_user_defined_seeds, SeedIterator};
 use clap::Parser;
-use colored_json::ToColoredJson;
-use rand::{rng, RngCore};
+use rayon::iter::IntoParallelRefIterator;
+use rayon::iter::ParallelIterator;
 use std::io::BufRead;
+use std::path::PathBuf;
+use std::time::Duration;
 use subprocess::{PopenConfig, Redirection};
+use tracing::{debug, info, warn};
 
 mod gitlab;
+mod seed;
+
+const DEFAULT_CHUNK_SIZE: usize = 10;
 
 fn default_fdbserver_path() -> String {
     String::from("/usr/sbin/fdbserver")
@@ -20,10 +27,8 @@ struct Cli {
     #[clap(long, short = 'f')]
     test_file: String,
     /// Max iterations to run
-    max_iterations: Option<u64>,
-    /// Seed to use
     #[clap(long)]
-    seed: Option<u32>,
+    max_iterations: Option<u64>,
     /// Gitlab token to use
     #[clap(long, env = "GITLAB_TOKEN", hide_env_values = true)]
     token: String,
@@ -36,34 +41,107 @@ struct Cli {
     /// Git commit ID
     #[clap(long)]
     commit_id: Option<String>,
+    /// Seed file to use
+    #[clap(long)]
+    seed_file: Option<String>,
+    /// Seeds to use
+    #[clap(long)]
+    seeds: Option<Vec<u32>>,
+    /// Number of seeds to run in parallel
+    #[clap(long)]
+    chunk_size: Option<usize>,
 }
 
-pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     dotenv::dotenv().ok();
+
+    tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
     let api = gitlab::GitlabBuilder::default()
-        .token(cli.token)
-        .endpoint(cli.gitlab_url)
+        .token(cli.token.as_str())
+        .endpoint(cli.gitlab_url.as_str())
         .project_id(cli.gitlab_project_id)
         .build()?;
 
-    let config = PopenConfig {
-        stdout: Redirection::Pipe,
-        stderr: Redirection::Pipe,
-        ..Default::default()
+    let user_defined_seeds = merge_user_defined_seeds(cli.seeds.clone(), &cli.seed_file)?;
+
+    let seed_iterator = SeedIterator::new(user_defined_seeds);
+
+    if let Some(max_iteration) = cli.max_iterations {
+        run_seeds(
+            seed_iterator.take(max_iteration as usize),
+            &cli,
+            &api,
+            cli.chunk_size,
+        )?;
+    } else {
+        run_seeds(seed_iterator, &cli, &api, cli.chunk_size)?;
+    }
+
+    Ok(())
+}
+
+fn run_seeds(
+    seed_iterator: impl Iterator<Item = u32>,
+    cli: &Cli,
+    api: &Gitlab,
+    chunk_size: Option<usize>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut accumulator = vec![];
+
+    let chunk_size = chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
+
+    let size = seed_iterator.size_hint();
+
+    let end = if let Some(end) = size.1 {
+        format!("{end}")
+    } else {
+        "inf".to_string()
     };
 
-    let mut rng = rng();
+    let mut checked_seeds = 0;
 
-    let seed = cli.seed.unwrap_or_else(|| rng.next_u32());
+    for seed in seed_iterator {
+        info!(seed, "Preparing to check seed");
+        accumulator.push(seed);
+        if accumulator.len() >= chunk_size {
+            debug!(?accumulator, "Running seeds");
+            info!("Running seeds [{checked_seeds}/{end}]");
+            accumulator.par_iter().for_each(|seed| {
+                run_seed(*seed, cli, api).expect("failed to run seed");
+            });
+            checked_seeds += accumulator.len();
+            accumulator.clear();
+        }
+    }
+    if !accumulator.is_empty() {
+        info!("Tearing down remaining seeds");
+        info!("Running seeds [{checked_seeds}/{end}]");
+        accumulator.par_iter().for_each(|seed| {
+            run_seed(*seed, cli, api).expect("failed to run seed");
+        })
+    }
+
+    Ok(())
+}
+
+fn run_seed(seed: u32, cli: &Cli, api: &Gitlab) -> Result<(), Box<dyn std::error::Error>> {
+    info!(seed, "Starting to check seed");
+
     let data_dir = tempfile::tempdir()?;
 
     let simfdb_data_dir = data_dir.path().join("simfdb");
     let logs_dir = data_dir.path().join("logs");
 
     std::fs::create_dir_all(&logs_dir)?;
+
+    let config = PopenConfig {
+        stdout: Redirection::Pipe,
+        stderr: Redirection::Pipe,
+        ..Default::default()
+    };
 
     let mut process = subprocess::Popen::create(
         &[
@@ -90,15 +168,29 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let (stdout, stderr) = process.communicate(None)?;
 
-    let Some(exit_status) = process.poll() else {
+    let Ok(Some(exit_status)) = process.wait_timeout(Duration::from_secs(120)) else {
         process.terminate()?;
         return Err("Failed to terminate process".into());
     };
 
-    println!("{:?}", exit_status);
+    if !exit_status.success() {
+        handle_faulty_seed(&logs_dir, stdout, stderr, seed, cli.commit_id.clone(), &api)?;
+    } else {
+        info!(seed, "Finished check seed no error found");
+    }
 
-    println!("seed: {seed}");
+    Ok(())
+}
 
+fn handle_faulty_seed(
+    logs_dir: &PathBuf,
+    stdout: Option<String>,
+    stderr: Option<String>,
+    seed: u32,
+    commit_id: Option<String>,
+    api: &Gitlab,
+) -> Result<(), Box<dyn std::error::Error>> {
+    warn!(seed, "Faulty seed found");
     let mut compiled = jq_rs::compile(r#"select(.Layer=="Rust") | select(.Severity=="40")"#)?;
 
     let mut filtered_output = "".to_string();
@@ -128,10 +220,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .stdout(stdout)
         .stderr(stderr)
         .seed(seed)
-        .commit_id(cli.commit_id)
+        .commit_id(commit_id)
         .build()?;
 
-    api.create_issue(payload).await?;
-
+    api.create_issue(payload)?;
     Ok(())
 }
