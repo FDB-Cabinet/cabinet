@@ -1,4 +1,5 @@
-use foundationdb::FdbBindingError;
+use crate::foundationdb;
+use crate::foundationdb::FdbBindingError;
 
 pub type Result<T> = std::result::Result<T, CabinetError>;
 

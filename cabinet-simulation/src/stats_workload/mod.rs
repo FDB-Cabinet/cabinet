@@ -3,8 +3,9 @@ use crate::stats_workload::errors::StatsError;
 use crate::stats_workload::wal::{StatsHolder, Wal};
 use crate::workload::WorkloadLogic;
 use cabinet::with_cabinet;
-use foundationdb::FdbBindingError;
-use foundationdb_simulation::{Database, WorkloadContext};
+use fdb_wrapper::foundationdb::FdbBindingError;
+use fdb_wrapper::foundationdb_simulation::{WorkloadContext};
+use fdb_wrapper::foundationdb::Database;
 use rand::{rng, Rng};
 use rand_chacha::rand_core::SeedableRng;
 
@@ -80,7 +81,7 @@ impl WorkloadLogic for StatsWorkload {
 
         println!("Check for tenant {tenant}");
 
-        with_cabinet(&db, &tenant, |cabinet| async move {
+        with_cabinet(db, &tenant, |cabinet| async move {
             let stats = cabinet.get_stats();
 
             let mut actual_count = stats.get_count().await?;

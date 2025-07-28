@@ -4,8 +4,8 @@
 use crate::item::Item;
 use crate::prefix::Prefix;
 use crate::stats::{StatEvent, StatsHolder};
-use foundationdb::tuple::Subspace;
-use foundationdb::RetryableTransaction;
+use fdb_wrapper::foundationdb::tuple::Subspace;
+use fdb_wrapper::foundationdb::RetryableTransaction;
 
 /// Cabinet provides item storage functionality with tenant isolation
 pub struct Cabinet {

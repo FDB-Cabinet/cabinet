@@ -3,6 +3,8 @@
 //! This crate provides a high-level interface for storing and retrieving data in FoundationDB
 //! with support for tenant isolation and transaction management.
 
+pub use fdb_wrapper::foundationdb;
+
 use crate::cabinet::Cabinet;
 use foundationdb::options::TransactionOption;
 use foundationdb::{Database, FdbBindingError, RetryableTransaction};

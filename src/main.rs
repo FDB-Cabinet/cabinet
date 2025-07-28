@@ -2,7 +2,8 @@ use cabinet::errors::CabinetError;
 use cabinet::item::Item;
 use cabinet::with_cabinet;
 use ::cabinet::with_transaction;
-use foundationdb::{Database, FdbBindingError};
+use fdb_wrapper::foundationdb;
+use fdb_wrapper::foundationdb::{Database, FdbBindingError};
 
 async fn cleanup(database: &Database) -> Result<(), FdbBindingError> {
     with_transaction(database, |trx| async move {
@@ -16,7 +17,9 @@ async fn cleanup(database: &Database) -> Result<(), FdbBindingError> {
 async fn main() -> Result<(), CabinetError> {
     let _guard = unsafe { foundationdb::boot() };
 
-    let database = Database::new(None).expect("Failed to create database");
+    let database = Database::new_compat(None)
+        .await
+        .expect("Failed to create database");
     cleanup(&database).await?;
 
     let tenant = "tenant";

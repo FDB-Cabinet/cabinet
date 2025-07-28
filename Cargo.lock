@@ -189,7 +189,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bincode",
- "foundationdb",
+ "fdb_api_switcher",
  "thiserror",
  "tokio",
 ]
@@ -201,8 +201,7 @@ dependencies = [
  "async-trait",
  "base64",
  "cabinet",
- "foundationdb",
- "foundationdb-simulation",
+ "fdb_api_switcher",
  "rand",
  "rand_chacha",
  "thiserror",
@@ -469,6 +468,14 @@ name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
+
+[[package]]
+name = "fdb_api_switcher"
+version = "0.1.0"
+dependencies = [
+ "foundationdb",
+ "foundationdb-simulation",
+]
 
 [[package]]
 name = "filetime"

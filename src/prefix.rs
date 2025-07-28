@@ -1,4 +1,4 @@
-use foundationdb::tuple::{TupleDepth, TuplePack, VersionstampOffset};
+use fdb_wrapper::foundationdb::tuple::{TupleDepth, TuplePack, VersionstampOffset};
 use std::io::Write;
 
 #[derive(Debug, Copy, Clone)]

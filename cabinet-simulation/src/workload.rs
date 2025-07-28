@@ -1,5 +1,9 @@
-use foundationdb::FdbBindingError;
-use foundationdb_simulation::{Database, Metric, Metrics, RustWorkload, Severity, WorkloadContext};
+use fdb_wrapper::foundationdb::FdbBindingError;
+use fdb_wrapper::foundationdb_simulation::{
+    Database as SimDatabase, Metric, Metrics, RustWorkload, Severity, WorkloadContext,
+};
+use fdb_wrapper::foundationdb::Database;
+
 
 pub trait WorkloadLogic {
     /// Initialize the workload with the given database and context
@@ -66,7 +70,7 @@ impl<W: WorkloadLogic> Workload<W> {
 impl<W: WorkloadLogic> RustWorkload for Workload<W> {
     /// Initializes the workload if this is the primary client (client_id = 0).
     /// Continuously attempts initialization until successful or a non-retryable error occurs.
-    async fn setup(&mut self, db: Database) {
+    async fn setup(&mut self, db: SimDatabase) {
         if self.workload_context.client_id() != 0 {
             return;
         }
@@ -109,7 +113,7 @@ impl<W: WorkloadLogic> RustWorkload for Workload<W> {
 
     /// Runs the main workload simulation for the configured number of iterations.
     /// Tracks successful and failed iterations, and logs results.
-    async fn start(&mut self, db: Database) {
+    async fn start(&mut self, db: SimDatabase) {
         for iteration in 0..self.iterations {
             match self
                 .workload_logic
@@ -162,7 +166,7 @@ impl<W: WorkloadLogic> RustWorkload for Workload<W> {
 
     /// Verifies the workload results.
     /// Continuously attempts verification until successful or a non-retryable error occurs.
-    async fn check(&mut self, db: Database) {
+    async fn check(&mut self, db: SimDatabase) {
         loop {
             match self
                 .workload_logic

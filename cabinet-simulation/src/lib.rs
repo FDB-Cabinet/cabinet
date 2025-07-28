@@ -1,6 +1,7 @@
 use crate::stats_workload::StatsWorkload;
 use crate::workload::Workload;
-use foundationdb_simulation::{
+use fdb_wrapper::foundationdb;
+use fdb_wrapper::foundationdb_simulation::{
     register_factory, RustWorkloadFactory, WorkloadContext, WrappedWorkload,
 };
 

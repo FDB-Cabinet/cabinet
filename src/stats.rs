@@ -4,6 +4,7 @@
 use crate::errors::CabinetError;
 use crate::item::Item;
 use crate::prefix::{EntityType, Prefix, StatType};
+use fdb_wrapper::foundationdb;
 use foundationdb::options::MutationType;
 use foundationdb::tuple::Subspace;
 use foundationdb::RetryableTransaction;

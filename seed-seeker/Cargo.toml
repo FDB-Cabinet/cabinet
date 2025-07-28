@@ -10,7 +10,7 @@ derive_builder = "0.20.2"
 dotenv = "0.15.0"
 flate2 = "1.1.2"
 tar = "0.4.44"
-jq-rs = "0.4.1"
+jq-rs = { version = "0.4.1", features = [] }
 jsonxf = "1.1.1"
 rand = { workspace = true }
 reqwest = { version = "0.12.22", features = ["multipart", "stream", "blocking"] }

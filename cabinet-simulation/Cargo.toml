@@ -8,8 +8,7 @@ name = "cabinet"
 crate-type = ["cdylib"]
 
 [dependencies]
-foundationdb-simulation = { workspace = true }
-foundationdb = { workspace = true }
+fdb_wrapper = { workspace = true, features = ["fdb-simulation-740"] }
 thiserror = { workspace = true }
 cabinet = { path = ".." }
 rand = { workspace = true, features = ["alloc"] }

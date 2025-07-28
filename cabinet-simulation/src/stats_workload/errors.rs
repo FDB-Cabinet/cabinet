@@ -1,11 +1,11 @@
-use foundationdb::FdbBindingError;
+use fdb_wrapper::foundationdb::FdbBindingError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StatsError {
     #[error("FoundationDB error: {0}")]
-    FdbBinddingError(#[from] foundationdb::FdbBindingError),
+    FdbBinddingError(#[from] FdbBindingError),
     #[error("FDB error: {0}")]
-    FdbError(#[from] foundationdb::FdbError),
+    FdbError(#[from] fdb_wrapper::foundationdb::FdbError),
     #[error("Item not found")]
     ItemNotFound,
     #[error("Item value incorrect :  expected {:?}, actual {:?}", String::from_utf8_lossy(&expected) ,String::from_utf8_lossy(&actual))]
