@@ -11,7 +11,7 @@ members = [
 [workspace.dependencies]
 tracing = "0.1.41"
 
-toolbox = { git = "https://github.com/FDB-Cabinet/toolbox.git", default-features = false, features = ["fdb-740"] }
+toolbox = { git = "https://github.com/FDB-Cabinet/toolbox.git", rev = "f29b8c702f27ff78ddb9c3b7745aa0f398f15532", default-features = false, features = ["fdb-740"] }
 
 
 rand = { version = "0.9.1" }

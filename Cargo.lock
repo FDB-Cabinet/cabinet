@@ -51,7 +51,7 @@ dependencies = [
 [[package]]
 name = "backend"
 version = "0.1.0"
-source = "git+https://github.com/FDB-Cabinet/toolbox.git#3b37bcc94483c0e895b955ea9d2ebea5219b645d"
+source = "git+https://github.com/FDB-Cabinet/toolbox.git?rev=f29b8c702f27ff78ddb9c3b7745aa0f398f15532#f29b8c702f27ff78ddb9c3b7745aa0f398f15532"
 dependencies = [
  "async-trait",
  "fdb_api_switcher",
@@ -197,7 +197,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "fdb_api_switcher"
 version = "0.1.0"
-source = "git+https://github.com/FDB-Cabinet/toolbox.git#3b37bcc94483c0e895b955ea9d2ebea5219b645d"
+source = "git+https://github.com/FDB-Cabinet/toolbox.git?rev=f29b8c702f27ff78ddb9c3b7745aa0f398f15532#f29b8c702f27ff78ddb9c3b7745aa0f398f15532"
 dependencies = [
  "foundationdb",
  "foundationdb-simulation",
@@ -755,7 +755,7 @@ dependencies = [
 [[package]]
 name = "toolbox"
 version = "0.1.0"
-source = "git+https://github.com/FDB-Cabinet/toolbox.git#3b37bcc94483c0e895b955ea9d2ebea5219b645d"
+source = "git+https://github.com/FDB-Cabinet/toolbox.git?rev=f29b8c702f27ff78ddb9c3b7745aa0f398f15532#f29b8c702f27ff78ddb9c3b7745aa0f398f15532"
 dependencies = [
  "backend",
 ]

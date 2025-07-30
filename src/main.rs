@@ -15,7 +15,9 @@ async fn cleanup(database: &Database) -> Result<(), FdbBindingError> {
 async fn main() -> Result<(), CabinetError> {
     let _guard = toolbox::get_network_thread()?;
 
-    let database = Database::new_compat(None)
+    let fdb_cluster_path = std::env::var("FDB_CLUSTER_PATH".to_string()).ok();
+
+    let database = Database::new_compat(fdb_cluster_path.as_deref())
         .await
         .expect("Failed to create database");
     cleanup(&database).await?;
