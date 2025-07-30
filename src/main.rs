@@ -93,5 +93,18 @@ async fn main() -> Result<(), CabinetError> {
 
     println!("{count}");
 
+    with_tenant(&database, tenant, |cabinet| async move {
+        for i in 0..2 {
+            let item = Item::new(
+                format!("key{}", i).as_bytes(),
+                format!("value{}", i).as_bytes(),
+            );
+            cabinet.put(&item).await?;
+        }
+
+        Ok(())
+    })
+    .await?;
+
     Ok(())
 }
