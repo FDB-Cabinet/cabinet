@@ -5,13 +5,13 @@ edition = "2024"
 
 [workspace]
 members = [
-    "cabinet-simulation", "seed-seeker",
+    "cabinet-simulation"
 ]
 
 [workspace.dependencies]
 tracing = "0.1.41"
 
-fdb_wrapper = { path = "../fdb_version_switch/fdb_api_switcher", package = "fdb_api_switcher", default-features = false, features = ["fdb-740"] }
+toolbox = { git = "https://github.com/FDB-Cabinet/toolbox.git", default-features = false, features = ["fdb-740"] }
 
 
 rand = { version = "0.9.1" }
@@ -21,7 +21,6 @@ tokio = { version = "1.46.1", features = ["macros", "rt-multi-thread", "time"] }
 
 [dependencies]
 bincode = "2.0.1"
-fdb_wrapper = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-async-trait = "0.1.88"
+toolbox = { workspace = true }

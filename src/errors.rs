@@ -1,5 +1,6 @@
 use crate::foundationdb;
 use crate::foundationdb::FdbBindingError;
+use toolbox::backend::errors::BackendError;
 
 pub type Result<T> = std::result::Result<T, CabinetError>;
 
@@ -9,10 +10,8 @@ pub enum CabinetError {
     FdbBinddingError(#[from] FdbBindingError),
     #[error("FDB error: {0}")]
     FdbError(#[from] foundationdb::FdbError),
-    #[error("Item not found: {0}")]
-    ItemNotFound(String),
-    #[error("Invalid count stats value: Unable to decode from little endian bytes")]
-    InvalidCountStatsValue,
+    #[error(transparent)]
+    Backend(#[from] BackendError),
 }
 
 impl From<CabinetError> for FdbBindingError {
@@ -20,7 +19,7 @@ impl From<CabinetError> for FdbBindingError {
         match e {
             CabinetError::FdbBinddingError(e) => e,
             CabinetError::FdbError(e) => FdbBindingError::NonRetryableFdbError(e),
-            err => FdbBindingError::CustomError(Box::new(err)),
+            CabinetError::Backend(err) => err.into(),
         }
     }
 }

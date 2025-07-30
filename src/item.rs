@@ -2,6 +2,8 @@
 
 use bincode::{decode_from_slice, encode_to_vec};
 use std::fmt::{Debug, Formatter};
+use toolbox::backend::errors::BackendError;
+use toolbox::backend::record::Record;
 
 /// Represents a key-value pair item that can be stored in the cabinet.
 #[derive(bincode::Encode, bincode::Decode)]
@@ -36,22 +38,18 @@ impl Item {
             value: value.to_vec(),
         }
     }
+}
 
-    /// Gets the key of this item.
-    ///
-    /// # Returns
-    /// A reference to the key bytes
-    pub fn get_key(&self) -> &[u8] {
-        &self.key
-    }
-
+impl Record for Item {
     /// Serializes this item into bytes.
     ///
     /// # Returns
     /// Serialized bytes of this item
-    pub fn as_bytes(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Result<Vec<u8>, BackendError> {
         let config = bincode::config::standard();
-        encode_to_vec(self, config).expect("Failed to encode item")
+        let encoded = encode_to_vec(self, config)
+            .map_err(|err| BackendError::SerialiazationError(err.to_string()))?;
+        Ok(encoded)
     }
 
     /// Creates an Item from serialized bytes.
@@ -61,9 +59,18 @@ impl Item {
     ///
     /// # Returns
     /// Deserialized Item
-    pub fn from_bytes(bytes: &[u8]) -> Item {
+    fn from_bytes(bytes: &[u8]) -> Result<Item, BackendError> {
         let config = bincode::config::standard();
-        let (item, _) = decode_from_slice(bytes, config).expect("Failed to decode item");
-        item
+        let (item, _) = decode_from_slice(bytes, config)
+            .map_err(|err| BackendError::DeserializationError(err.to_string()))?;
+        Ok(item)
+    }
+
+    /// Gets the key of this item.
+    ///
+    /// # Returns
+    /// A reference to the key bytes
+    fn get_key(&self) -> &[u8] {
+        &self.key
     }
 }

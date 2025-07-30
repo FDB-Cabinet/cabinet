@@ -2,7 +2,6 @@
 //! with different event types and probabilities.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use cabinet::cabinet::Cabinet;
 use cabinet::item::Item;
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
@@ -10,6 +9,8 @@ use rand::{Rng, RngCore};
 use rand_chacha::ChaCha20Rng;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use toolbox::backend::record::Record;
+use toolbox::backend::tenant::Tenant;
 
 /// Number of different event types supported
 const EVENT_TYPE_CARDINALITY: u32 = 3;
@@ -44,6 +45,7 @@ pub enum WalEvent {
 }
 
 /// Result of applying a WAL event
+#[derive(Debug)]
 pub enum ApplyResult {
     /// Result of Put operation with the stored Item
     Put(Item),
@@ -61,7 +63,7 @@ impl WalEvent {
     ///
     /// # Returns
     /// Result containing the ApplyResult or an error
-    pub async fn apply(&self, cabinet: Cabinet) -> cabinet::errors::Result<ApplyResult> {
+    pub async fn apply(&self, cabinet: Tenant) -> cabinet::errors::Result<ApplyResult> {
         match self {
             WalEvent::Put { key, value } => {
                 let item = Item::new(&key, &value);
@@ -75,7 +77,7 @@ impl WalEvent {
                 Ok(ApplyResult::Delete(None))
             }
             WalEvent::Clear => {
-                cabinet.clear().await?;
+                cabinet.clear::<Item>().await?;
                 Ok(ApplyResult::Clear)
             }
         }
@@ -153,7 +155,7 @@ impl StatsHolder {
     /// * `item` - Item that was put
     pub fn put(&mut self, item: &Item) {
         self.count += 1;
-        self.size += item.as_bytes().len() as u64;
+        self.size += item.as_bytes().expect("Unable to get item bytes").len() as u64;
     }
 
     /// Updates stats after deleting an item
@@ -162,7 +164,7 @@ impl StatsHolder {
     /// * `item` - Item that was deleted
     pub fn delete(&mut self, item: &Item) {
         self.count -= 1;
-        self.size -= item.as_bytes().len() as u64;
+        self.size -= item.as_bytes().expect("Unable to get item bytes").len() as u64;
     }
 
     /// Clears all stats

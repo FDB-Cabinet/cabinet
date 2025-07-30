@@ -1,9 +1,8 @@
-use fdb_wrapper::foundationdb::FdbBindingError;
-use fdb_wrapper::foundationdb_simulation::{
+use toolbox::foundationdb::Database;
+use toolbox::foundationdb::FdbBindingError;
+use toolbox::foundationdb_simulation::{
     Database as SimDatabase, Metric, Metrics, RustWorkload, Severity, WorkloadContext,
 };
-use fdb_wrapper::foundationdb::Database;
-
 
 pub trait WorkloadLogic {
     /// Initialize the workload with the given database and context
@@ -95,7 +94,8 @@ impl<W: WorkloadLogic> RustWorkload for Workload<W> {
 
                     continue;
                 }
-                Err(_) => {
+                Err(err) => {
+                    println!("*******************{}", err);
                     self.workload_context.trace(
                         Severity::Error,
                         format!(

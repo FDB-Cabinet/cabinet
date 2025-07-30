@@ -2,12 +2,12 @@
 use crate::stats_workload::errors::StatsError;
 use crate::stats_workload::wal::{StatsHolder, Wal};
 use crate::workload::WorkloadLogic;
-use cabinet::with_cabinet;
-use fdb_wrapper::foundationdb::FdbBindingError;
-use fdb_wrapper::foundationdb_simulation::{WorkloadContext};
-use fdb_wrapper::foundationdb::Database;
 use rand::{rng, Rng};
 use rand_chacha::rand_core::SeedableRng;
+use toolbox::foundationdb::Database;
+use toolbox::foundationdb::FdbBindingError;
+use toolbox::foundationdb_simulation::WorkloadContext;
+use toolbox::with_tenant;
 
 
 mod errors;
@@ -81,7 +81,7 @@ impl WorkloadLogic for StatsWorkload {
 
         println!("Check for tenant {tenant}");
 
-        with_cabinet(db, &tenant, |cabinet| async move {
+        with_tenant(db, &tenant, |cabinet| async move {
             let stats = cabinet.get_stats();
 
             let mut actual_count = stats.get_count().await?;
@@ -130,10 +130,20 @@ impl WorkloadLogic for StatsWorkload {
 
         println!("{tenant} => {:?}", event);
 
-        let result = with_cabinet(&db, &tenant, |cabinet| async move {
-            Ok(event.apply(cabinet).await?)
+        let result = with_tenant(&db, &tenant, |cabinet| async move {
+            let result = event.apply(cabinet).await;
+            if let Err(err) = &result {
+                println!("***************------*****{err}");
+            }
+            Ok(result?)
         })
-        .await?;
+        .await;
+
+        if let Err(err) = &result {
+            println!("/////////////////{err:?}");
+        }
+
+        let result = result?;
 
         result.update_stats(&mut self.stats_holder);
 
