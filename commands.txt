@@ -1,0 +1,5 @@
+auth "tenant1"
+put "toto" "tata"
+get "toto"
+get "titi"
+quit

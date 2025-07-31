@@ -28,4 +28,10 @@ toolbox = { workspace = true }
 cabinet-lib = { workspace = true }
 cabinet-protocol = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { version = "0.3.19", features = ["tracing"] }
+tracing-subscriber = { version = "0.3.19", features = ["tracing", "env-filter"] }
+opentelemetry = { version = "0.20.0" }
+opentelemetry-otlp = { version = "0.13.0", features = ["http-proto", "reqwest-client"] }
+opentelemetry_sdk = { version = "0.20.0", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.20.0"
+reqwest = { version = "0.11.24", features = ["json"] }
+clap = { version = "4.5.3", features = ["derive"] }

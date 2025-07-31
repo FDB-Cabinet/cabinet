@@ -22,6 +22,7 @@ pub mod clear;
 pub mod delete;
 pub mod get;
 pub mod put;
+pub mod quit;
 pub mod stats;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -62,6 +63,7 @@ pub enum KeyWord {
     Delete,
     Clear,
     Stats,
+    Quit,
 }
 
 impl Match<u8> for KeyWord {
@@ -73,6 +75,7 @@ impl Match<u8> for KeyWord {
             KeyWord::Delete => match_pattern(b"delete", data),
             KeyWord::Clear => match_pattern(b"clear", data),
             KeyWord::Stats => match_pattern(b"stats", data),
+            KeyWord::Quit => match_pattern(b"quit", data),
         }
     }
 
@@ -84,6 +87,7 @@ impl Match<u8> for KeyWord {
             KeyWord::Delete => 6,
             KeyWord::Clear => 5,
             KeyWord::Stats => 5,
+            KeyWord::Quit => 4,
         }
     }
 }
@@ -96,6 +100,7 @@ pub enum Command<'a> {
     Delete(Delete<'a>),
     Clear(Clear),
     Stats(Stats),
+    Quit(quit::Quit),
     Unknown(Unknown),
 }
 
@@ -108,6 +113,7 @@ impl<'a> Visitor<'a, u8> for Command<'a> {
             .try_or(Command::Delete)?
             .try_or(Command::Clear)?
             .try_or(Command::Stats)?
+            .try_or(Command::Quit)?
             .try_or(Command::Unknown)?
             .finish()
             .ok_or(UnexpectedToken)?;
@@ -144,10 +150,11 @@ impl<'a> Iterator for Commands<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::commands::quit::Quit;
     #[test]
     fn test_command() {
         let commands =
-            br#"get "toot"   put "toot" "data" delete "toot"  clear  unknown auth "tenant 1""#;
+            br#"get "toot"   put "toot" "data" delete "toot"  clear  unknown auth quit "tenant 1""#;
         let mut scanner = Scanner::new(commands);
 
         let command = Command::accept(&mut scanner).expect("Unable to parse command");
@@ -180,10 +187,10 @@ mod tests {
     #[test]
     fn test_command_iterator() {
         let commands =
-            br#"get "toot"   put "toot" "data" delete "toot"  clear  stats unknown auth "tenant 1""#;
+            br#"get "toot"   put "toot" "data" delete "toot"  clear  stats quit unknown auth "tenant 1""#;
         let command = Commands::new(commands);
         let commands = command.collect::<Vec<_>>();
-        assert_eq!(commands.len(), 7);
+        assert_eq!(commands.len(), 8);
         assert!(matches!(
             commands[0],
             Ok(Command::Get(Get { key: b"toot" }))
@@ -201,9 +208,10 @@ mod tests {
         ));
         assert!(matches!(commands[3], Ok(Command::Clear(Clear))));
         assert!(matches!(commands[4], Ok(Command::Stats(Stats))));
-        assert!(matches!(commands[5], Ok(Command::Unknown(Unknown))));
+        assert!(matches!(commands[5], Ok(Command::Quit(Quit))));
+        assert!(matches!(commands[6], Ok(Command::Unknown(Unknown))));
         assert!(matches!(
-            commands[6],
+            commands[7],
             Ok(Command::Auth(Auth { tenant: "tenant 1" }))
         ));
     }

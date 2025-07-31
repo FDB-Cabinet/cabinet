@@ -115,6 +115,10 @@ async fn handle_connection(
     let mut buffer = [0; 1024];
     let mut state = State::new(database);
 
+    info!("Handling connection...");
+
+    let (mut quit_tx, mut quit_rx) = broadcast::channel(1);
+
     loop {
         tokio::select! {
             // Handle incoming data
@@ -129,7 +133,7 @@ async fn handle_connection(
 
                         let requests_bytes = &buffer[..n];
 
-                        handle_requests(requests_bytes, &mut socket, &mut state).await?;
+                        handle_requests(requests_bytes, &mut socket, &mut state, &mut quit_tx).await?;
                         socket.flush().await?;
                     }
                     Err(_) => {
@@ -137,6 +141,9 @@ async fn handle_connection(
                         break;
                     }
                 }
+            }
+            _ = quit_rx.recv() => {
+                info!("Client explicitly quit");
             }
             // Handle shutdown signal
             _ = shutdown_rx.recv() => {
@@ -150,24 +157,19 @@ async fn handle_connection(
 }
 
 #[tracing::instrument(skip(socket, state), fields(tenant=state.tenant()))]
-async fn handle_requests(
+pub async fn handle_requests(
     raw: &[u8],
     socket: &mut TcpStream,
     state: &mut State,
+    quit_tx: &broadcast::Sender<()>,
 ) -> Result<(), CabinetError> {
     trace!(raw=?String::from_utf8_lossy(raw));
     for command in Commands::new(raw) {
         let command = command?;
 
         match command {
-            Command::Auth(Auth { tenant }) => {
-                state.set_tenant(tenant);
-                socket.write_all(&Response::Ok.to_bytes()).await?;
-            }
-            Command::Unknown(_) => {
-                socket
-                    .write_all(&Response::Error("Unknown command".to_string()).to_bytes())
-                    .await?;
+            Command::Auth(_) | Command::Unknown(_) | Command::Quit(_) => {
+                handle_requests_non_authenticated(command, socket, state, quit_tx).await?;
             }
             command => handle_authenticated_requests(command, socket, state).await?,
         }
@@ -176,7 +178,7 @@ async fn handle_requests(
     Ok(())
 }
 
-enum Response {
+pub enum Response {
     Ok,
     Error(String),
     AuthRequired,
@@ -186,7 +188,7 @@ enum Response {
 }
 
 impl Response {
-    fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         match self {
             Response::Ok => b"OK\n".to_vec(),
             Response::Error(message) => format!("ERROR {}\n", message).as_bytes().to_vec(),
@@ -205,11 +207,56 @@ impl Response {
 }
 
 #[tracing::instrument(skip(socket, state), fields(tenant=state.tenant()))]
+async fn handle_requests_non_authenticated<'a>(
+    command: Command<'a>,
+    socket: &mut TcpStream,
+    state: &mut State,
+    quit_tx: &broadcast::Sender<()>,
+) -> Result<(), CabinetError> {
+    match command {
+        Command::Auth(Auth { tenant }) => {
+            // Simple authentication logic - in a real application, you would validate credentials
+            // For this example, we'll authenticate if the tenant is not empty
+            if !tenant.is_empty() {
+                state.set_tenant(tenant);
+                state.set_authenticated(true);
+                socket.write_all(&Response::Ok.to_bytes()).await?;
+            } else {
+                socket
+                    .write_all(&Response::Error("Authentication failed".to_string()).to_bytes())
+                    .await?;
+            }
+        }
+        Command::Unknown(_) => {
+            socket
+                .write_all(&Response::Error("Unknown command".to_string()).to_bytes())
+                .await?;
+        }
+        Command::Quit(_) => {
+            if let Err(err) = quit_tx.send(()) {
+                error!("Failed to send quit signal: {}", err);
+            }
+            socket.write_all(&Response::Ok.to_bytes()).await?;
+        }
+        _ => {
+            socket.write_all(&Response::AuthRequired.to_bytes()).await?;
+        }
+    }
+    Ok(())
+}
+
+#[tracing::instrument(skip(socket, state), fields(tenant=state.tenant()))]
 async fn handle_authenticated_requests<'a>(
     command: Command<'a>,
     socket: &mut TcpStream,
     state: &mut State,
 ) -> Result<(), CabinetError> {
+    // Check if the client is authenticated
+    if !state.is_authenticated() {
+        socket.write_all(&Response::AuthRequired.to_bytes()).await?;
+        return Ok(());
+    }
+
     let Some(tenant) = state.tenant() else {
         socket.write_all(&Response::AuthRequired.to_bytes()).await?;
         return Ok(());
