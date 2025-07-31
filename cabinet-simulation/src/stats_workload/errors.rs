@@ -16,7 +16,7 @@ pub enum StatsError {
     #[error("Invalid database stats count: expected {expected}, actual {actual}")]
     InvalidDatabaseStatsCount { expected: i64, actual: i64 },
     #[error(transparent)]
-    Cabinet(#[from] cabinet::errors::CabinetError),
+    Cabinet(#[from] cabinet_lib::errors::CabinetLibError),
 }
 
 impl From<StatsError> for FdbBindingError {

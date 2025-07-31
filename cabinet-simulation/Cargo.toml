@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 [dependencies]
 toolbox = { workspace = true, features = ["simulation-740"] }
 thiserror = { workspace = true }
-cabinet = { path = ".." }
+cabinet-lib = { path = "../cabinet-lib" }
 rand = { workspace = true, features = ["alloc"] }
 rand_chacha = "0.9.0"
 base64 = "0.22.1"

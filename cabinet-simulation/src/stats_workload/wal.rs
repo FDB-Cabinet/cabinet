@@ -2,7 +2,7 @@
 //! with different event types and probabilities.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
-use cabinet::item::Item;
+use cabinet_lib::item::Item;
 use rand::distr::weighted::WeightedIndex;
 use rand::distr::Distribution;
 use rand::{Rng, RngCore};
@@ -63,7 +63,7 @@ impl WalEvent {
     ///
     /// # Returns
     /// Result containing the ApplyResult or an error
-    pub async fn apply(&self, cabinet: Tenant) -> cabinet::errors::Result<ApplyResult> {
+    pub async fn apply(&self, cabinet: Tenant) -> cabinet_lib::errors::Result<ApplyResult> {
         match self {
             WalEvent::Put { key, value } => {
                 let item = Item::new(&key, &value);

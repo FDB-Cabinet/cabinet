@@ -4,19 +4,20 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = [
+members = ["cabinet-lib", "cabinet-protocol",
     "cabinet-simulation"
 ]
 
 [workspace.dependencies]
 tracing = "0.1.41"
 
-toolbox = { git = "https://github.com/FDB-Cabinet/toolbox.git", rev = "f29b8c702f27ff78ddb9c3b7745aa0f398f15532", default-features = false, features = ["fdb-740"] }
-
+toolbox = { path = "../fdb_version_switch/toolbox", default-features = false, features = ["fdb-740"] }
+cabinet-lib = { path = "cabinet-lib" }
+cabinet-protocol = { path = "cabinet-protocol" }
 
 rand = { version = "0.9.1" }
 thiserror = "2.0.12"
-tokio = { version = "1.46.1", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1.46.1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "signal", "time"] }
 
 
 [dependencies]
@@ -24,3 +25,7 @@ bincode = "2.0.1"
 thiserror = { workspace = true }
 tokio = { workspace = true }
 toolbox = { workspace = true }
+cabinet-lib = { workspace = true }
+cabinet-protocol = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3.19", features = ["tracing"] }
