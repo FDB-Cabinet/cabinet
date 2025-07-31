@@ -4,7 +4,6 @@ use crate::server::CabinetServer;
 use cabinet_lib::foundationdb::Database;
 use clap::Parser;
 use std::sync::Arc;
-use tokio::io::AsyncWriteExt;
 use tracing::{error, info};
 
 mod errors;

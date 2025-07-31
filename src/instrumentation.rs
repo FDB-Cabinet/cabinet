@@ -7,6 +7,7 @@ use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::attribute::{SERVICE_NAME, SERVICE_VERSION};
 use opentelemetry_semantic_conventions::SCHEMA_URL;
 use std::collections::HashMap;
+use tracing::info;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -36,7 +37,7 @@ fn init_tracer_provider(args: &Args) -> SdkTracerProvider {
         .with_endpoint(endpoint);
 
     if let Some(auth) = args.tracing_auth.as_ref() {
-        let headers = HashMap::from([("Authorization".to_string(), auth.to_string())]);
+        let headers = HashMap::from([("Authorization".to_string(), format!("Basic {}", auth))]);
 
         exporter_builder = exporter_builder.with_headers(headers);
     }
@@ -87,7 +88,7 @@ pub struct OtelGuard {
 
 impl Drop for OtelGuard {
     fn drop(&mut self) {
-        println!("Shutting down OpenTelemetry...");
+        info!("Shutting down OpenTelemetry...");
         if let Some(tracer) = &self.tracer_provider {
             if let Err(err) = tracer.shutdown() {
                 eprintln!("{err:?}");
